@@ -49,7 +49,7 @@ public class SBotMain {
 			e1.printStackTrace();
 		}
 
-		// TODO: Move all this code into seperate class, just here for now to get things
+		// TODO: Move all this code into separate class, just here for now to get things
 		// going fast
 		try {
 			Socket socket = new Socket("irc.twitch.tv", 6667);
@@ -60,6 +60,9 @@ public class SBotMain {
 			write("PASS", OAUTH_TOKEN);
 			write("NICK", BOT_USERNAME);
 			write("JOIN", CHANNEL_NAME);
+			
+			//TODO: You know, this damn shit
+			//write("CAP REQ", ":twitch.tv/tags");
 
 			// TODO: This is just a quick fix to not break my shit on opening server
 			// messages.
@@ -196,7 +199,7 @@ public class SBotMain {
 					}
 					Random rng = new Random();
 					winner = drawList.get(rng.nextInt(drawList.size()));
-					//TODO: Save the winners chat messages in real time to a txt file to display on stream
+					//TODO: Save the winners chat messages in real time to a .txt file to display on stream
 					return "Congratulations: " + winner + "! You won the drawing!";
 					
 				}
