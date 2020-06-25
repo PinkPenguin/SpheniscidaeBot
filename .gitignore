@@ -2,6 +2,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/eclipse,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=eclipse,windows
 
+# Sensitive data
+tokens.txt
+
 ### Eclipse ###
 .metadata
 bin/
