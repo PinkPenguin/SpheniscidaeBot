@@ -60,7 +60,6 @@ public class SBotMain {
 			write("PASS", OAUTH_TOKEN);
 			write("NICK", BOT_USERNAME);
 			write("JOIN", CHANNEL_NAME);
-			
 
 			// TODO: This is just a quick fix to not break my shit on opening server
 			// messages.
@@ -71,7 +70,7 @@ public class SBotMain {
 				System.out.println("<<< " + serverMessage);
 
 				if (serverMessage.endsWith("NAMES list")) {
-					write("PRVMSG", "");
+//					write("PRVMSG", "");
 					break;
 				}
 			}
@@ -79,7 +78,7 @@ public class SBotMain {
 			while (in.hasNext()) {
 				String serverMessage = in.nextLine();
 				System.out.println("<<< " + serverMessage);
-				
+
 				if (serverMessage.startsWith("PING")) {
 					String pingContents = serverMessage.split(" ", 2)[1];
 					write("PONG", pingContents);
@@ -131,24 +130,30 @@ public class SBotMain {
 		User user = new User(splitMessage[0].substring(1).split("!", 2)[0]);
 
 		String chatCommand = null;
-		String commandArgument = null;
+		String chatCommandArgument = null;
 		if (chatMessage.startsWith("!")) {
-			chatCommand = chatMessage.split(" ")[0];
+			String splitChatCommand[] = chatMessage.split(" ");
+			chatCommand = splitChatCommand[0];
+			try {
+				chatCommandArgument = splitChatCommand[1];
+			} catch (IndexOutOfBoundsException e) {
+				/* The chat command did not have an argument */
+			}
+
 		}
 
 //		System.out.println(user.getName());
 //		System.out.println(chatCommand);
 
+		// TODO: Eventually fix user handling with new user tags so I can differentiate
+		// mod users
 		if (chatCommand != null) {
 			switch (chatCommand) {
 
 			case "!drawing":
-//				System.out.println("NOT EVEN HERE?");
 				if (user.getName().equals("pinkpenguintv")) {
 					drawList = new ArrayList<String>();
 					drawingIsActive = true;
-
-//					System.out.println("HOW DID I GET HERE?!");
 
 					return "Starting roulette drawing. Type !enter to enter into the drawing.";
 				}
@@ -166,17 +171,43 @@ public class SBotMain {
 
 			case "!draw":
 				if (user.getName().equals("pinkpenguintv")) {
+					if (drawingIsActive = true) {
+						if (drawList.isEmpty()) {
+							return "There are no users in the drawing yet.";
+						}
+						Random rng = new Random();
+//						rng.nextInt(drawList.size());
+						winner = drawList.get(rng.nextInt(drawList.size()));
+						drawingIsActive = false;
+						//TODO: Save the winners chat messages in real time to a txt file to display on stream
+						return "Congratulations: " + winner + "! You won the drawing!";
+					} else {
+						return "There is no active drawing.";
+					}
+				}
+				break;
+				
+			//TODO: Consider merging this functionality into the !draw command
+			case "!redraw":
+				if(user.getName().equals("pinkpenguintv")) {
+					drawList.remove(winner);
+					if (drawList.isEmpty()) {
+						return "There are no users in the drawing.";
+					}
 					Random rng = new Random();
-//					rng.nextInt(drawList.size());
 					winner = drawList.get(rng.nextInt(drawList.size()));
-					drawingIsActive = false;
+					//TODO: Save the winners chat messages in real time to a txt file to display on stream
 					return "Congratulations: " + winner + "! You won the drawing!";
+					
 				}
 				break;
 
 			}
 
 		}
+		/*
+		 * Reaching this part means the parsed message was not in any list of commands
+		 */
 		return null;
 	}
 
