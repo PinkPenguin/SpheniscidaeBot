@@ -204,8 +204,20 @@ public class SBotMain {
 					
 				}
 				break;
+				
+				
+			case "!roulette":
+				return "PoE Build Roulette is a build randomizer for deciding what build I play next after a death. "
+						+ "This is done with the help of you fine viewers. All you have to do is type \"!enter\" in "
+						+ "chat to be entered into the drawing and whoever wins gets one free reroll if they're not "
+						+ "happy with the first skill. After that whatever the wheel lands on is final.";
+//				break;
 
+			case "!rip":
+				return "We haven't died yet PogChamp";
+//				break;
 			}
+			
 
 		}
 		/*
