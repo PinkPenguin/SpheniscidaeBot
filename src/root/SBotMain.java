@@ -27,6 +27,7 @@ public class SBotMain {
 
 	public static void main(String[] args) {
 
+		//TODO: Consider moving to some sort of initialization class or configuration class
 		try {
 			Scanner tokenScanner = new Scanner(new File("tokens.txt"));
 			while (tokenScanner.hasNextLine()) {
@@ -49,8 +50,7 @@ public class SBotMain {
 			e1.printStackTrace();
 		}
 
-		// TODO: Move all this code into separate class, just here for now to get things
-		// going fast
+		// TODO: Move to TwitchIO
 		try {
 			Socket socket = new Socket("irc.twitch.tv", 6667);
 
@@ -61,7 +61,7 @@ public class SBotMain {
 			write("NICK", BOT_USERNAME);
 			write("JOIN", CHANNEL_NAME);
 			
-			//TODO: You know, this damn shit
+			//TODO: You know, this damn shit...
 			//write("CAP REQ", ":twitch.tv/tags");
 
 			// TODO: This is just a quick fix to not break my shit on opening server
@@ -111,10 +111,12 @@ public class SBotMain {
 		}
 
 	}
-
+	
+	//TODO: Move to TwitchIO
 	private static void write(String command, String message) {
 		String fullMessage = command + " " + message;
-
+		
+		/*Formating for sending chat messages*/
 		if (command.equals("PRIVMSG")) {
 			out.print(command + " " + CHANNEL_NAME + " :" + message + "\r\n");
 			System.out.println(">>> " + command + " " + CHANNEL_NAME + " :" + message);
@@ -125,6 +127,7 @@ public class SBotMain {
 		out.flush();
 	}
 
+	//TODO: Move to ChatParser
 	private static String parseMessage(String fullMessage) {
 		/* 0: User info, 1: Command type, 2: Channel name, 3: Chat message */
 		String[] splitMessage = fullMessage.split(" ", 4);
