@@ -21,7 +21,7 @@ public class SBotMain {
 	private static PrintWriter out;
 	private static Scanner in;
 
-	private static ArrayList<String> drawList;
+	private static ArrayList<String> drawList = new ArrayList<String>();
 	private static boolean drawingIsActive = false;
 	private static String winner;
 
