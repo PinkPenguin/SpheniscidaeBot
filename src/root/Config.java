@@ -35,7 +35,7 @@ public class Config {
 				CLIENT_SECRET = line[1];
 			}
 		}
-		
+
 		tokenScanner.close();
 	}
 

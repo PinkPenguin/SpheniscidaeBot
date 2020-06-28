@@ -4,6 +4,7 @@
 
 # Sensitive data
 tokens.txt
+chat_log.txt
 
 ### Eclipse ###
 .metadata

@@ -25,9 +25,12 @@ public class SBotMain {
 	private static boolean drawingIsActive = false;
 	private static String winner;
 
+	private static LogHandler log;
+
 	public static void main(String[] args) {
 
-		//TODO: Consider moving to some sort of initialization class or configuration class
+		// TODO: Consider moving to some sort of initialization class or configuration
+		// class
 		try {
 			Scanner tokenScanner = new Scanner(new File("tokens.txt"));
 			while (tokenScanner.hasNextLine()) {
@@ -61,8 +64,10 @@ public class SBotMain {
 			write("NICK", BOT_USERNAME);
 			write("JOIN", CHANNEL_NAME);
 			
-			//TODO: You know, this damn shit...
-			//write("CAP REQ", ":twitch.tv/tags");
+			log = new LogHandler(new File("chat_log.txt"));
+
+//			 TODO: You know, this damn shit...
+			 write("CAP REQ", ":twitch.tv/tags");
 
 			// TODO: This is just a quick fix to not break my shit on opening server
 			// messages.
@@ -73,7 +78,6 @@ public class SBotMain {
 				System.out.println("<<< " + serverMessage);
 
 				if (serverMessage.endsWith("NAMES list")) {
-//					write("PRVMSG", "");
 					break;
 				}
 			}
@@ -89,9 +93,14 @@ public class SBotMain {
 
 					// NOTE: remember that this is done to the initial twitch server messages as
 					// well.
+					// TODO: this is only a quick fix, this needs to be fixed
+					if(!serverMessage.startsWith(":tmi")) {
+						
+					
 					String response = parseMessage(serverMessage);
 					if (response != null) {
 						write("PRIVMSG", response);
+					}
 					}
 				}
 			}
@@ -111,12 +120,12 @@ public class SBotMain {
 		}
 
 	}
-	
-	//TODO: Move to TwitchIO
+
+	// TODO: Move to TwitchIO
 	private static void write(String command, String message) {
 		String fullMessage = command + " " + message;
-		
-		/*Formating for sending chat messages*/
+
+		/* Formating for sending chat messages */
 		if (command.equals("PRIVMSG")) {
 			out.print(command + " " + CHANNEL_NAME + " :" + message + "\r\n");
 			System.out.println(">>> " + command + " " + CHANNEL_NAME + " :" + message);
@@ -127,13 +136,22 @@ public class SBotMain {
 		out.flush();
 	}
 
-	//TODO: Move to ChatParser
+	// TODO: Move to ChatParser
 	private static String parseMessage(String fullMessage) {
-		/* 0: User info, 1: Command type, 2: Channel name, 3: Chat message */
-		String[] splitMessage = fullMessage.split(" ", 4);
-		String chatMessage = splitMessage[3].substring(1);
+		/* 0: User tag, 1: User info 2: Command type, 3: Channel name, 4: Chat message */
+		String[] splitMessage = fullMessage.split(" ", 5);
+		String chatMessage = splitMessage[4].substring(1);
 		// TODO: see if this needs to change to display name later
+		// TODO: this should be done elsewhere, sending the tag to somewhere to be
+		// parsed
 		User user = new User(splitMessage[0].substring(1).split("!", 2)[0]);
+		try {
+			log.logEvent(user, chatMessage);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			System.out.println("ERROR!: Couldnt write to file!");
+			e1.printStackTrace();
+		}
 
 		String chatCommand = null;
 		String chatCommandArgument = null;
@@ -157,7 +175,7 @@ public class SBotMain {
 			switch (chatCommand) {
 
 			case "!drawing":
-				if (user.getName().equals("pinkpenguintv")) {
+				if (user.isMod()) {
 					drawList = new ArrayList<String>();
 					drawingIsActive = true;
 
@@ -166,7 +184,7 @@ public class SBotMain {
 				break;
 
 			case "!enter":
-				if (!user.getName().equals("pinkpenguintv")) {
+				if (!user.isBroadcaster()) {
 					if (drawList.add(user.getName())) {
 						return "@" + user.getName() + " Your entry has been submitted.";
 					} else {
@@ -176,7 +194,7 @@ public class SBotMain {
 				break;
 
 			case "!draw":
-				if (user.getName().equals("pinkpenguintv")) {
+				if (user.isMod()) {
 					if (drawingIsActive = true) {
 						if (drawList.isEmpty()) {
 							return "There are no users in the drawing yet.";
@@ -185,30 +203,31 @@ public class SBotMain {
 //						rng.nextInt(drawList.size());
 						winner = drawList.get(rng.nextInt(drawList.size()));
 						drawingIsActive = false;
-						//TODO: Save the winners chat messages in real time to a txt file to display on stream
+						// TODO: Save the winners chat messages in real time to a txt file to display on
+						// stream
 						return "Congratulations: " + winner + "! You won the drawing!";
 					} else {
 						return "There is no active drawing.";
 					}
 				}
 				break;
-				
-			//TODO: Consider merging this functionality into the !draw command
+
+			// TODO: Consider merging this functionality into the !draw command
 			case "!redraw":
-				if(user.getName().equals("pinkpenguintv")) {
+				if (user.isMod()) {
 					drawList.remove(winner);
 					if (drawList.isEmpty()) {
 						return "There are no users in the drawing.";
 					}
 					Random rng = new Random();
 					winner = drawList.get(rng.nextInt(drawList.size()));
-					//TODO: Save the winners chat messages in real time to a .txt file to display on stream
+					// TODO: Save the winners chat messages in real time to a .txt file to display
+					// on stream
 					return "Congratulations: " + winner + "! You won the drawing!";
-					
+
 				}
 				break;
-				
-				
+
 			case "!roulette":
 				return "PoE Build Roulette is a build randomizer for deciding what build I play next after a death. "
 						+ "This is done with the help of you fine viewers. All you have to do is type \"!enter\" in "
@@ -220,7 +239,6 @@ public class SBotMain {
 				return "We haven't died yet PogChamp";
 //				break;
 			}
-			
 
 		}
 		/*
