@@ -8,36 +8,89 @@ import java.util.Scanner;
 
 public class TwitchIO {
 
-	private PrintWriter out;
-	private Scanner in;
+	private PrintWriter scanOut;
+	private Scanner scanIn;
+	private Socket socket;
+	private ChatParser chatParser;
 
 	public TwitchIO(String destination, int port) throws UnknownHostException, IOException {
-		Socket socket = new Socket(destination, port);
-
-		out = new PrintWriter(socket.getOutputStream(), true);
-		in = new Scanner(socket.getInputStream());
+		try {
+			this.socket = new Socket(destination, port);
+			this.scanOut = new PrintWriter(socket.getOutputStream(), true);
+			this.scanIn = new Scanner(socket.getInputStream());
+		} catch (UnknownHostException e) {
+			System.out.println("ERROR: Could not resolve the host IP!");
+			System.out.println("Destination: " + destination + ", " + port);
+		}
+		chatParser = new ChatParser();
 	}
 
+	/*
+	 * Connects and holds the streams open
+	 */
 	public void connect() {
 		write("PASS", Config.OAUTH_TOKEN);
 		write("NICK", Config.BOT_USERNAME);
 		write("JOIN", Config.CHANNEL_NAME);
+
+		write("CAP REQ", ":twitch.tv/tags");
+
+		while (scanIn.hasNext()) {
+			String serverMessage = scanIn.nextLine();
+			System.out.println("<<< " + serverMessage);
+
+			if (serverMessage.endsWith("NAMES list")) {
+				break;
+			}
+		}
+
+		while (scanIn.hasNext()) {
+			String serverMessage = scanIn.nextLine();
+			System.out.println("<<< " + serverMessage);
+
+			if (serverMessage.startsWith("PING")) {
+				String pingContents = serverMessage.split(" ", 2)[1];
+				write("PONG", pingContents);
+			} else {
+
+				// NOTE: remember that this is done to the initial twitch server messages as
+				// well.
+				// TODO: this is only a quick fix, this needs to be fixed
+				if (!serverMessage.startsWith(":tmi")) {
+
+					String response = chatParser.parseMessage(serverMessage);
+					if (response != null) {
+						write("PRIVMSG", response);
+					}
+				}
+			}
+		}
+
+		scanIn.close();
+		scanOut.close();
+		try {
+			socket.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
+	/*
+	 * Pushes messages through the output stream. Either API calls or direct
+	 * messages to the stream chat.
+	 */
 	private void write(String command, String message) {
 		String fullMessage = command + " " + message;
 
 		/* Formating for sending chat messages */
 		if (command.equals("PRIVMSG")) {
-			// TODO: As the TODO in Config.java says, the CHANNEL_NAME should be something
-			// native to the TwitchIO class and should therefore be passed to it on creation
-			out.print(command + " " + Config.CHANNEL_NAME + " :" + message + "\r\n");
+			scanOut.print(command + " " + Config.CHANNEL_NAME + " :" + message + "\r\n");
 			System.out.println(">>> " + command + " " + Config.CHANNEL_NAME + " :" + message);
 		} else {
-			out.print(fullMessage + "\r\n");
+			scanOut.print(fullMessage + "\r\n");
 			System.out.println(">>> " + fullMessage);
 		}
-		out.flush();
+		scanOut.flush();
 	}
 
 }
