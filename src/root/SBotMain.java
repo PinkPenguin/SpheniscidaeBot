@@ -26,6 +26,7 @@ public class SBotMain {
 		}
 
 		/* Initialize the API connection */
+		//TODO: Add these to the config file instead?
 		String url = "irc.twitch.tv";
 		int port = 6667;
 

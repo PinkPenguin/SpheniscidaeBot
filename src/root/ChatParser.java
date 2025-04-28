@@ -1,12 +1,23 @@
 package root;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Random;
+import java.util.Scanner;
 
 public class ChatParser {
+
+	private String commandDir = "commands.txt";
+	private HashMap<String, String> simpleCommands;
 
 	private ArrayList<User> drawList;
 	private boolean drawingIsActive = false;
@@ -14,21 +25,25 @@ public class ChatParser {
 	private User winner;
 
 	private HashMap<User, Long> activeUserList;
-	private long timeDelta;
+	private long activityTimeDelta;
 	private long lastTime;
 	/* 900000 ms is 15 minutes */
 	private final long activityCleanTime = 900000;
 
-	// private HashMap<String, String> commandMap = new HashMap<String, String>();
 
 	public ChatParser() {
-		this.timeDelta = System.currentTimeMillis();
+		this.activityTimeDelta = 0;
+		this.lastTime = System.currentTimeMillis();
 		this.activeUserList = new HashMap<User, Long>();
 		this.drawList = new ArrayList<User>();
 		this.drawingKeyword = "!enter";
+
+		this.simpleCommands = new HashMap<String, String>();
+		loadCommands(new File(commandDir));
 	}
 
 	public String parseMessage(String fullMessage) {
+
 		/*
 		 * 0: User tag, 1: User info 2: Command type, 3: Channel name, 4: Chat message
 		 */
@@ -37,20 +52,20 @@ public class ChatParser {
 		User chatter = new User(splitMessage[0].substring(1).split("!", 2)[0]);
 
 		long currentTime = System.currentTimeMillis();
-		timeDelta += (currentTime - lastTime);
+		activityTimeDelta += (currentTime - lastTime);
 		if (!chatter.isBroadcaster()) {
 			activeUserList.put(chatter, currentTime);
 		}
 
-		/* Clean activity list if it's been more than 15 min since last time. */
-		if (timeDelta > activityCleanTime) {
+		/* Clean activity list if it's been more than 15 min since last clean. */
+		if (activityTimeDelta > activityCleanTime) {
 			Iterator<User> itr = activeUserList.keySet().iterator();
 			while (itr.hasNext()) {
 				if (currentTime - activeUserList.get(itr.next()) > activityCleanTime) {
 					itr.remove();
 				}
 			}
-			timeDelta = 0;
+			activityTimeDelta = 0;
 		}
 
 		try {
@@ -61,121 +76,207 @@ public class ChatParser {
 		}
 
 		/* Identify and parse commands. */
-		String chatCommand = null;
-		String chatCommandArgument = null;
 		if (chatMessage.startsWith("!")) {
 
-			String splitChatCommand[] = chatMessage.split(" ");
-			chatCommand = splitChatCommand[0].toLowerCase();
-			try {
-				// TODO: make sure to further process this in case multiple arguments etc
-				if (splitChatCommand[1].startsWith("-")) {
-					chatCommandArgument = splitChatCommand[1];
-				}
-			} catch (IndexOutOfBoundsException e) {
-				/* The chat command did not have an argument */
-			}
-		}
+			Command command = new Command(chatMessage);
 
-		// TODO: Save commands to file so they can be edited.
-		// TODO: Add functionality to edit, add or remove commands.
+			// TODO: Save commands to file so they can be edited.
+			if (command != null) {
+//				System.out.println(chatCommand);
+				switch (command.name) {
 
-		if (chatCommand != null) {
-			System.out.println(chatCommand);
-			switch (chatCommand) {
-
-			case "!drawing":
-				if (chatter.isMod()) {
-					if (chatCommandArgument.equals("-clear")) {
-						drawList.clear();
-						return "Drawing list has been cleared.";
-					} else if (chatCommandArgument.equals("-end")){
-						drawList.clear();
-						drawingIsActive = false;
-						return "Drawing has ended.";
-					} else {
-						drawList = new ArrayList<User>();
-						drawingIsActive = true;
-
-						return "Starting roulette drawing. Type !enter to enter into the drawing.";
-					}
-				}
-				break;
-
-			case "!draw":
-				if (chatter.isMod()) {
-					if (drawingIsActive = true) {
-						drawList.remove(winner);
-						if (drawList.isEmpty()) {
-							return "There are no users in the drawing yet.";
+				case "!drawing":
+					if (chatter.isMod()) {
+						if (command.argumentList.contains("-clear")) {
+							drawList.clear();
+							return "Drawing list has been cleared.";
+						} else if (command.argumentList.contains("-end")) {
+							drawList.clear();
+							drawingIsActive = false;
+							return "Drawing has ended.";
+						} else {
+							drawList = new ArrayList<User>();
+							drawingIsActive = true;
+							// TODO: Set argument to change the keyword.
+							return "Starting roulette drawing. Type \"" + drawingKeyword
+									+ "\" to enter into the drawing.";
 						}
-						Random rng = new Random();
-						winner = drawList.get(rng.nextInt(drawList.size()));
-//						drawingIsActive = false;
-						// TODO: Save the winners chat messages in real time to a txt file to display on
-						// stream
-						return "Congratulations @" + winner.getName() + "! You won the drawing!";
-					} else {
-						return "There is no active drawing.";
 					}
+					break;
+
+				case "!draw":
+					if (chatter.isMod()) {
+						if (command.argumentList.contains("-active")) {
+							if (activeUserList.isEmpty())
+								return "There are no active chatters.";
+
+							Random rng = new Random();
+							List<User> list = new ArrayList<User>(activeUserList.keySet());
+							winner = list.get(rng.nextInt(list.size()));
+
+							return "Congratulations @" + winner.getName() + "! You won the drawing!";
+
+						} else if (drawingIsActive = true) {
+							drawList.remove(winner);
+							if (drawList.isEmpty()) {
+								return "There are no users in the drawing yet.";
+							} else {
+								Random rng = new Random();
+								winner = drawList.get(rng.nextInt(drawList.size()));
+
+								// TODO: Save the winners chat messages in a txt file to display on stream
+								return "Congratulations @" + winner.getName() + "! You won the drawing!";
+							}
+						} else {
+							return "There is no active drawing.";
+						}
+					}
+					break;
+
+				case "!clearactive":
+					if (chatter.isMod()) {
+						activeUserList.clear();
+						return "Active user list cleared.";
+					}
+					break;
+
+				case "!add":
+					if (chatter.isMod()) {
+						if (!command.argumentList.isEmpty()) {
+
+							String argument = command.argumentList.get(0).substring(1);
+
+							if (argument.startsWith("!")) {
+								try {
+									BufferedWriter fileWriter = new BufferedWriter(
+											new FileWriter(new File(commandDir), true));
+									fileWriter.newLine();
+									fileWriter.write(command.name + ":" + command.body);
+									fileWriter.close();
+									simpleCommands.put(command.name, command.body);
+								} catch (IOException e) {
+									e.printStackTrace();
+									return "There was en error in trying to write command to file.";
+								}
+								return "Command " + argument + " has been added.";
+							} else {
+								return "\"" + argument + "\"" + " is not a valid command name.";
+							}
+						} else {
+							return "Syntax: \"!add -!command Text.";
+						}
+					}
+					break;
+
+				case "!edit":
+					if (chatter.isMod()) {
+						if (!command.argumentList.isEmpty()) {
+
+							String argument = command.argumentList.get(0).substring(1);
+							if (simpleCommands.containsKey(argument)) {
+								try {
+									BufferedReader reader = new BufferedReader(new FileReader(commandDir));
+
+									String currentLine = reader.readLine();
+									String fullText = "";
+
+									while (currentLine != null) {
+										if (currentLine.startsWith(argument)) {
+											fullText += argument + ":" + command.body + "\n";
+										} else {
+											fullText += currentLine + "\n";
+										}
+										currentLine = reader.readLine();
+									}
+
+									BufferedWriter writer = new BufferedWriter(new FileWriter(commandDir));
+									writer.write(fullText);
+									writer.close();
+									reader.close();
+
+								} catch (IOException e) {
+									e.printStackTrace();
+									return "There was an error reading from the command file.";
+								}
+								simpleCommands.put(argument, command.body);
+								return "Command: \"" + argument + "\" was edited.";
+							}
+						} else {
+							return "Please specify which command to edit. Syntax: \"!edit -!command Text.";
+						}
+					}
+					break;
+
+				case "!remove":
+					if (chatter.isMod()) {
+						if (!command.argumentList.isEmpty()) {
+							String argument = command.argumentList.get(0).substring(1);
+							if (simpleCommands.containsKey(argument)) {
+								try {
+									BufferedReader reader = new BufferedReader(new FileReader(commandDir));
+
+									String currentLine = reader.readLine();
+									String fullText = "";
+
+									while (currentLine != null) {
+										if (!currentLine.startsWith(argument)) {
+											fullText += currentLine + "\n";
+										}
+										currentLine = reader.readLine();
+									}
+
+									BufferedWriter writer = new BufferedWriter(new FileWriter(commandDir));
+									writer.write(fullText);
+									writer.close();
+									reader.close();
+
+								} catch (IOException e) {
+									e.printStackTrace();
+									return "There was an error reading from the command file.";
+								}
+								simpleCommands.remove(argument);
+								return "Command: \"" + argument + "\" was removed.";
+							} else {
+								return "That command does not exist.";
+							}
+						} else {
+							return "Syntax: \"!remove -!command";
+						}
+					}
+					break;
 				}
-				break;
-
-			// TODO: case Draw from activity list.
-
-			case "!clearactive":
-				activeUserList.clear();
-				return "Active user list cleared.";
-//				break;
-
-			// TODO: Like before, add separate functionality to read/edit these from a file
-			// for now
-			case "!roulette":
-				return "PoE Build Roulette is a build randomizer for deciding what build I play next after a death. "
-						+ "This is done with the help of you fine viewers. All you have to do is type \"!enter\" in "
-						+ "chat to be entered into the drawing and whoever wins gets one free reroll if they're not "
-						+ "happy with the first skill. After that whatever the wheel lands on is final.";
-//				break;
-
-			case "!rip":
-				return "We haven't died yet PogChamp";
-//				break;
-
-			case "!test":
-				return "I'm alive!";
-
-			case "!discord":
-				return "Here is the link to our discord: https://discord.gg/D2ezMPd";
-//				break;
-
-			case "!camera":
-				return "Unfortunately the camera is acting up due to a cable issue. Hopefully I can get it fixed soonTM.";
-
-			case "!cam":
-				return "Unfortunately the camera is acting up due to a cable issue. Hopefully I can get it fixed soonTM.";
-
-			case "!schedule":
-				return "I don't have a set schedule though streams tend to start at around 10pm CET (around 4pm EST)";
-
-			case "!profile":
-				return "Here is the link to my PoE profile page: https://www.pathofexile.com/account/view-profile/PinkPenguin/characters";
-
-			case "!build":
-				return "Check the stream...";
 			}
 
-		}
-		
-		/*Entry into an active drawing. Default keyword is "!enter"*/
-		if(chatCommand.equals(drawingKeyword)) {
-			if (!chatter.isBroadcaster()) {
-				drawList.add(chatter);
+			/* Entry into an active drawing. Default keyword is "!enter" */
+			if (command.name.equals(drawingKeyword)) {
+				if (!chatter.isBroadcaster()) {
+					drawList.add(chatter);
+				}
+			}
+
+			/* Handle simple response commands. */
+			if (simpleCommands.containsKey(command.name)) {
+				return simpleCommands.get(command.name);
 			}
 		}
-		
 		/*
 		 * Reaching this part means the parsed message was not in any list of commands
 		 */
 		return null;
+
+	}
+
+	private void loadCommands(File file) {
+		try {
+			Scanner scan = new Scanner(file);
+			while (scan.hasNextLine()) {
+				String[] line = scan.nextLine().split(":", 2);
+				simpleCommands.put(line[0], line[1]);
+			}
+		} catch (FileNotFoundException e) {
+			System.out.println("ERROR: Could not read from commands.txt!");
+			e.printStackTrace();
+		}
+
 	}
 }

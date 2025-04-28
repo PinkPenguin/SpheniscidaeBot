@@ -21,6 +21,7 @@ public class TwitchIO {
 		} catch (UnknownHostException e) {
 			System.out.println("ERROR: Could not resolve the host IP!");
 			System.out.println("Destination: " + destination + ", " + port);
+			e.printStackTrace();
 		}
 		chatParser = new ChatParser();
 	}
@@ -76,8 +77,8 @@ public class TwitchIO {
 	}
 
 	/*
-	 * Pushes messages through the output stream. Either API calls or direct
-	 * messages to the stream chat.
+	 * Pushes messages through the output stream. Either API information or direct
+	 * messages to the stream IRCchat.
 	 */
 	private void write(String command, String message) {
 		String fullMessage = command + " " + message;
@@ -88,7 +89,12 @@ public class TwitchIO {
 			System.out.println(">>> " + command + " " + Config.CHANNEL_NAME + " :" + message);
 		} else {
 			scanOut.print(fullMessage + "\r\n");
-			System.out.println(">>> " + fullMessage);
+			if (!command.equals("PASS")) {
+				System.out.println(">>> " + fullMessage);
+			} else {
+				System.out.println(">>> " + command + " " + message.replaceAll(".", "*"));
+
+			}
 		}
 		scanOut.flush();
 	}

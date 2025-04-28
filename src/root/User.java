@@ -104,15 +104,17 @@ public class User {
 	public boolean isMod() {
 		return isMod;
 	}
-	
+
 	@Override
 	public boolean equals(Object o) {
-		
-		if (o == this) return true;
-		if(!(o instanceof User)) return false;
-		
+
+		if (o == this)
+			return true;
+		if (!(o instanceof User))
+			return false;
+
 		User u = (User) o;
-				
+
 		return userName.equals(u.userName);
 	}
 }
